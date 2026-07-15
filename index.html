@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>パンダのたなしごと</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#e8874a;
+    --accent-dark:#c46a30;
+    --panel:#fffaf2;
+    --ink:#3a2e22;
+    --ok:#4caf7d;
+    --ng:#e05a5a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    overflow:hidden; overscroll-behavior:none;
+    touch-action:none; -webkit-user-select:none; user-select:none;
+    background:#eaf2ea;
+    font-family:'BIZ UDPGothic','Hiragino Maru Gothic ProN','Hiragino Sans',sans-serif;
+    color:var(--ink);
+  }
+  #app{position:fixed; inset:0;}
+  canvas{display:block; width:100%; height:100%;}
+
+  /* ---------- タイトル画面 ---------- */
+  #titleScreen{
+    position:fixed; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at top, #bfe6c8 0%, #eaf2ea 70%);
+    gap:22px; padding:20px; text-align:center;
+  }
+  #titleScreen h1{
+    font-size:clamp(28px,6vw,48px); color:#2f5a3d; margin:0 0 4px 0;
+    text-shadow:0 2px 0 rgba(255,255,255,0.6);
+  }
+  #titleScreen p.sub{color:#4a6a52; margin:0; font-size:clamp(14px,2.6vw,18px);}
+  .modeBtn{
+    width:min(560px,86vw);
+    background:var(--panel); border:none; border-radius:20px;
+    padding:16px 20px; display:flex; align-items:center; gap:16px;
+    box-shadow:0 6px 0 var(--accent-dark), 0 10px 16px rgba(0,0,0,0.25);
+    font-family:inherit; cursor:pointer;
+  }
+  .modeBtn:active{transform:translateY(4px); box-shadow:0 2px 0 var(--accent-dark), 0 4px 10px rgba(0,0,0,0.25);}
+  .modeBtn .emoji{font-size:34px; flex:0 0 auto;}
+  .modeBtn .txt{text-align:left; flex:1;}
+  .modeBtn .txt b{display:block; font-size:clamp(17px,3vw,21px); color:var(--ink);}
+  .modeBtn .txt span{display:block; font-size:clamp(12px,2.2vw,14px); color:#7a6a58; margin-top:2px;}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding:max(10px,env(safe-area-inset-top)) 14px 0 14px;
+    pointer-events:none;
+    gap:10px;
+  }
+  #hudLeft{
+    display:flex; align-items:flex-start; gap:8px; pointer-events:none;
+    min-width:0;
+  }
+  #instructionBox{
+    pointer-events:auto;
+    background:var(--panel); border-radius:16px; padding:10px 18px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.25);
+    font-size:clamp(14px,3vw,20px); font-weight:700; max-width:52vw;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  #instructionBox .label{font-size:0.6em; font-weight:400; color:#8a7a66;}
+  #topRightBtns{display:flex; flex-direction:column; gap:8px; pointer-events:auto; align-items:flex-end;}
+  .roundBtn{
+    background:var(--panel); border:none; border-radius:50%;
+    width:52px; height:52px; flex:0 0 auto; box-shadow:0 4px 8px rgba(0,0,0,0.25);
+    font-size:22px; display:flex; align-items:center; justify-content:center;
+    pointer-events:auto;
+  }
+  .roundBtn:active{transform:translateY(2px);}
+  .pillBtn{
+    pointer-events:auto;
+    background:var(--panel); border:none; border-radius:16px;
+    padding:9px 16px; box-shadow:0 4px 8px rgba(0,0,0,0.25);
+    font-size:clamp(12px,2.4vw,14px); font-weight:700; color:var(--ink);
+    font-family:inherit; white-space:nowrap;
+  }
+  .pillBtn:active{transform:translateY(2px);}
+  #scoreBox{
+    pointer-events:auto;
+    background:var(--panel); border-radius:14px; padding:6px 14px;
+    font-size:clamp(13px,2.6vw,16px); font-weight:700;
+    box-shadow:0 4px 8px rgba(0,0,0,0.25);
+    white-space:nowrap;
+  }
+
+  /* ---------- コントローラー ---------- */
+  #controls{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:0 16px max(14px,env(safe-area-inset-bottom)) 16px;
+    pointer-events:none;
+  }
+  #dpad{
+    pointer-events:auto;
+    display:grid; grid-template-columns:64px 64px 64px; grid-template-rows:64px 64px 64px;
+    gap:6px;
+  }
+  #dpad button{
+    border:none; border-radius:16px;
+    background:var(--panel); font-size:26px; color:var(--ink);
+    box-shadow:0 5px 0 #cdbfa8;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #dpad button:active{transform:translateY(4px); box-shadow:0 1px 0 #cdbfa8;}
+  #btnUp{grid-column:2; grid-row:1;}
+  #btnLeft{grid-column:1; grid-row:2;}
+  #btnRight{grid-column:3; grid-row:2;}
+  #btnDown{grid-column:2; grid-row:3;}
+
+  #actionPad{
+    pointer-events:auto; display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+  }
+  .actionBtn{
+    width:104px; height:64px; border:none; border-radius:18px;
+    font-size:16px; font-weight:700; color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,0.25);
+  }
+  .actionBtn:active{transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,0.25);}
+  #btnGrab{background:var(--accent);}
+  #btnRelease{background:#5a8ee0;}
+  .actionBtn:disabled{background:#b9b2a6; color:#e8e4dc; box-shadow:0 5px 0 #9a9488;}
+
+  /* ---------- モード3 回答パネル ---------- */
+  #answerPanel{
+    position:fixed; left:0; right:0; bottom:0; z-index:25;
+    display:none; flex-direction:column; align-items:center; gap:10px;
+    padding:14px 10px max(16px,env(safe-area-inset-bottom)) 10px;
+    background:linear-gradient(to top, rgba(234,242,234,0.96), rgba(234,242,234,0.0));
+  }
+  #answerPanel .row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  #answerPanel .hint{color:#fff; font-size:clamp(13px,2.8vw,16px); font-weight:700; margin-bottom:2px;}
+  .ansBtn{
+    min-width:52px; height:52px; padding:0 10px; border:none; border-radius:14px;
+    background:var(--panel); font-size:20px; font-weight:700; color:var(--ink);
+    box-shadow:0 4px 0 #cdbfa8;
+  }
+  .ansBtn:active{transform:translateY(3px); box-shadow:0 1px 0 #cdbfa8;}
+  .ansBtn.selected{background:var(--accent); color:#fff; box-shadow:0 4px 0 var(--accent-dark);}
+
+  /* ---------- フィードバック ---------- */
+  #feedback{
+    position:fixed; inset:0; z-index:60; display:none;
+    align-items:center; justify-content:center; pointer-events:none;
+  }
+  #feedback .card{
+    background:var(--panel); border-radius:28px; padding:26px 40px;
+    font-size:clamp(30px,7vw,54px); font-weight:700; box-shadow:0 10px 30px rgba(0,0,0,0.35);
+    text-align:center;
+  }
+  #feedback .sub{display:block; font-size:0.35em; color:#7a6a58; margin-top:6px; font-weight:400;}
+  #feedback.ok .card{color:var(--ok);}
+  #feedback.ng .card{color:var(--ng);}
+
+  #hint{
+    position:fixed; left:50%; bottom:150px; transform:translateX(-50%);
+    z-index:22; background:rgba(20,20,20,0.78); color:#fff; padding:8px 18px;
+    border-radius:14px; font-size:clamp(13px,2.8vw,16px); font-weight:700;
+    opacity:0; transition:opacity 0.25s; pointer-events:none; white-space:nowrap;
+  }
+  #hint.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <div id="titleScreen">
+    <h1>🐼 パンダのたなしごと</h1>
+    <p class="sub">たなの ばしょを よみとって、にもつを はこぼう</p>
+    <button class="modeBtn" data-mode="pick">
+      <span class="emoji">📦</span>
+      <span class="txt"><b>とりにいく</b><span>しじされた たなから にもつを とってくる</span></span>
+    </button>
+    <button class="modeBtn" data-mode="place">
+      <span class="emoji">🚚</span>
+      <span class="txt"><b>おきにいく</b><span>にもつを しじされた たなに おいてくる</span></span>
+    </button>
+    <button class="modeBtn" data-mode="locate">
+      <span class="emoji">🔎</span>
+      <span class="txt"><b>どこでしょう</b><span>にもつが ある たなの ばしょを こたえる</span></span>
+    </button>
+  </div>
+
+  <div id="hud" style="display:none;">
+    <div id="hudLeft">
+      <button id="backBtn" class="roundBtn" style="display:none;">↩️</button>
+      <div id="instructionBox">
+        <span class="label">しじ</span>
+        <span id="instructionText">-</span>
+      </div>
+    </div>
+    <div id="topRightBtns">
+      <button id="camBtn" class="pillBtn">🔭 ぜんたいひょうじ</button>
+      <div id="scoreBox">せいかい 0 / 0</div>
+    </div>
+  </div>
+
+  <div id="hint"></div>
+
+  <div id="controls" style="display:none;">
+    <div id="dpad">
+      <button id="btnUp">△</button>
+      <button id="btnLeft">◁</button>
+      <button id="btnRight">▷</button>
+      <button id="btnDown">▽</button>
+    </div>
+    <div id="actionPad">
+      <button id="btnGrab" class="actionBtn" disabled>つかむ</button>
+      <button id="btnRelease" class="actionBtn" disabled>はなす</button>
+    </div>
+  </div>
+
+  <div id="answerPanel">
+    <div class="hint" id="answerHint">なんれつめ かな?(A〜E)</div>
+    <div class="row" id="colRow"></div>
+    <div class="row" id="rowRow" style="display:none;"></div>
+  </div>
+
+  <div id="feedback"><div class="card" id="feedbackText"></div></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+
+/* ============================================================
+   基本設定・ズーム/ダブルタップ対策
+============================================================ */
+document.addEventListener("gesturestart", e => e.preventDefault());
+document.addEventListener("gesturechange", e => e.preventDefault());
+document.addEventListener("dblclick", e => e.preventDefault());
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive:false });
+document.addEventListener("touchstart", e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive:false });
+document.addEventListener("touchmove", e => { e.preventDefault(); }, { passive:false });
+
+/* ============================================================
+   定数・座標系
+   col: 0..4 = A..E   row: 0..4 = 1..5 (rowが大きいほど奥/北)
+   入口(にゅうこう)は E列のさらに右(F相当)・3だんめ の位置に固定
+============================================================ */
+const COLS = 5, ROWS = 5;
+const COL_LETTERS = ["A","B","C","D","E"];
+const CELL = 2.0;
+const ENTRANCE = { col: COLS, row: 2 }; // "F-3"にあたる、たなの外側(右)
+
+function cellCenter(col, row){
+  const x = (col - (COLS-1)/2) * CELL;
+  const z = ((ROWS-1)/2 - row) * CELL;
+  return { x, z };
+}
+function worldOf(pos){
+  if (pos.col === ENTRANCE.col && pos.row === ENTRANCE.row){
+    const base = cellCenter(COLS-1, ENTRANCE.row);
+    return { x: base.x + CELL, z: base.z };
+  }
+  return cellCenter(pos.col, pos.row);
+}
+function isValidPos(col, row){
+  if (col === ENTRANCE.col && row === ENTRANCE.row) return true;
+  return col >= 0 && col < COLS && row >= 0 && row < ROWS;
+}
+function coordLabel(col, row){
+  return COL_LETTERS[col] + "-" + (row+1);
+}
+
+/* ============================================================
+   Three.js セットアップ
+============================================================ */
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setClearColor(0xbfe0f0, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xcdeaf5, 26, 52);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x9fb89f, 1.5);
+scene.add(hemi);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(6, 12, 6);
+scene.add(dirLight);
+const fillLight = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(fillLight);
+
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------- 床(倉庫のベース) ---------- */
+const baseFloor = new THREE.Mesh(
+  new THREE.PlaneGeometry(60, 60),
+  new THREE.MeshStandardMaterial({ color:0xdce9d8, roughness:1 })
+);
+baseFloor.rotation.x = -Math.PI/2;
+baseFloor.position.y = -0.01;
+scene.add(baseFloor);
+
+/* ---------- たな(碁盤目)エリア:チェック柄テクスチャ ---------- */
+function makeGridTexture(){
+  const unit = 128;
+  const size = unit * COLS;
+  const cnv = document.createElement("canvas");
+  cnv.width = size; cnv.height = size;
+  const ctx = cnv.getContext("2d");
+  for (let r=0; r<ROWS; r++){
+    for (let c=0; c<COLS; c++){
+      const isDark = (r+c) % 2 === 0;
+      ctx.fillStyle = isDark ? "#8fcf9c" : "#a6dcae";
+      // canvasのyは上が0なので、row(奥=大)を上に描く => 描画row = (ROWS-1-r)
+      const drawR = (ROWS-1-r);
+      ctx.fillRect(c*unit, drawR*unit, unit, unit);
+    }
+  }
+  ctx.strokeStyle = "rgba(40,80,50,0.4)";
+  ctx.lineWidth = 4;
+  for (let i=0;i<=COLS;i++){
+    ctx.beginPath(); ctx.moveTo(i*unit,0); ctx.lineTo(i*unit,size); ctx.stroke();
+  }
+  for (let i=0;i<=ROWS;i++){
+    ctx.beginPath(); ctx.moveTo(0,i*unit); ctx.lineTo(size,i*unit); ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const gridArea = new THREE.Mesh(
+  new THREE.PlaneGeometry(COLS*CELL, ROWS*CELL),
+  new THREE.MeshStandardMaterial({ map: makeGridTexture(), roughness:0.95 })
+);
+gridArea.rotation.x = -Math.PI/2;
+scene.add(gridArea);
+
+/* 入口タイル(F-3にあたる、たなの右がわ) */
+{
+  const ew = worldOf(ENTRANCE);
+  const entranceTile = new THREE.Mesh(
+    new THREE.PlaneGeometry(CELL, CELL),
+    new THREE.MeshStandardMaterial({ color:0xffc94a, roughness:0.9 })
+  );
+  entranceTile.rotation.x = -Math.PI/2;
+  entranceTile.position.set(ew.x, 0.01, ew.z);
+  scene.add(entranceTile);
+}
+
+/* ---------- ラベル(スプライト。常にカメラの方を向く) ---------- */
+function makeLabelSprite(text, bg){
+  const cnv = document.createElement("canvas");
+  cnv.width = 160; cnv.height = 160;
+  const ctx = cnv.getContext("2d");
+  ctx.clearRect(0,0,160,160);
+  ctx.beginPath();
+  ctx.arc(80,80,70,0,Math.PI*2);
+  ctx.fillStyle = bg || "#fffaf2";
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#c46a30";
+  ctx.stroke();
+  ctx.fillStyle = "#3a2e22";
+  ctx.font = "bold 88px 'BIZ UDPGothic', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 80, 88);
+  const tex = new THREE.CanvasTexture(cnv);
+  const mat = new THREE.SpriteMaterial({ map:tex, depthTest:true });
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(0.9,0.9,0.9);
+  return spr;
+}
+
+for (let c=0; c<COLS; c++){
+  const base = cellCenter(c, 0);
+  const spr = makeLabelSprite(COL_LETTERS[c]);
+  spr.position.set(base.x, 0.55, base.z + CELL*0.5 + 0.55);
+  scene.add(spr);
+}
+for (let r=0; r<ROWS; r++){
+  const base = cellCenter(0, r);
+  const spr = makeLabelSprite(String(r+1));
+  spr.position.set(base.x - CELL*0.5 - 0.55, 0.55, base.z);
+  scene.add(spr);
+}
+
+/* ============================================================
+   パンダキャラクター(参考コードのモデリング手法を採用)
+============================================================ */
+function buildPanda(){
+  const g = new THREE.Group();          // ルート(位置)
+  const model = new THREE.Group();      // 見た目の入れ物
+  model.rotation.y = Math.PI; // 顔のパーツは+Z向きに作るので、進行方向(-Z)に合わせて反転しておく
+  g.add(model);
+
+  const white = new THREE.MeshStandardMaterial({ color:0xfaf7f2, roughness:0.85 });
+  const black = new THREE.MeshStandardMaterial({ color:0x33333a, roughness:0.65 });
+  const pink  = new THREE.MeshStandardMaterial({ color:0xff9fb6, roughness:0.9 });
+  const dark  = new THREE.MeshStandardMaterial({ color:0x1c1c22, roughness:0.5 });
+  const white2= new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.35 });
+  const grey  = new THREE.MeshStandardMaterial({ color:0x5a5a63, roughness:0.8 });
+
+  const parts = {};
+
+  // 体
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 28, 20), white);
+  body.scale.set(1.05, 1.0, 0.95);
+  body.position.y = 0.56;
+  model.add(body); parts.body = body;
+
+  // しっぽ
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), white);
+  tail.position.set(0, 0.46, -0.48);
+  model.add(tail);
+
+  // 足(ピボットでスイングできるように)
+  function leg(sx){
+    const pivot = new THREE.Group(); pivot.position.set(sx*0.22, 0.28, 0.03);
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.14,4,10), black);
+    m.position.y = -0.14; pivot.add(m);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.13,12,10), black);
+    foot.scale.set(1.1,0.65,1.2); foot.position.set(0,-0.27,0.05); pivot.add(foot);
+    model.add(pivot); return pivot;
+  }
+  parts.legL = leg(-1); parts.legR = leg(1);
+
+  // 腕(ピボット)。荷物を胸の前でかかえられるよう、はじめから少し前に構えておく
+  function arm(sx){
+    const pivot = new THREE.Group(); pivot.position.set(sx*0.46, 0.74, 0.05);
+    pivot.rotation.x = -0.55;
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.18,4,10), black);
+    m.position.y = -0.15; pivot.add(m);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.115,12,10), black);
+    paw.position.y = -0.3; pivot.add(paw);
+    model.add(pivot); return pivot;
+  }
+  parts.armL = arm(-1); parts.armR = arm(1);
+
+  // 頭
+  const head = new THREE.Group(); head.position.set(0, 1.18, 0.05);
+  model.add(head); parts.head = head;
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.4, 28, 20), white);
+  head.add(skull);
+
+  // 耳(ピボットでぴくぴく)
+  function ear(sx){
+    const pivot = new THREE.Group(); pivot.position.set(sx*0.27, 0.27, -0.02);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.15,16,14), black);
+    m.scale.set(1,1.05,0.6); m.position.y = 0.05; pivot.add(m);
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.08,12,10), grey);
+    inner.scale.set(1,1,0.4); inner.position.set(0,0.05,0.06); pivot.add(inner);
+    head.add(pivot); return pivot;
+  }
+  parts.earL = ear(-1); parts.earR = ear(1);
+
+  // 目のまわりの黒パッチ
+  function patch(sx){
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.135,16,14), black);
+    m.scale.set(0.8,1.15,0.4);
+    m.position.set(sx*0.155, 0.02, 0.32);
+    m.rotation.z = sx*0.45; m.rotation.x = -0.12;
+    head.add(m);
+  }
+  patch(-1); patch(1);
+
+  // 目玉(白目+黒目+ハイライト)
+  function eye(sx){
+    const grp = new THREE.Group(); grp.position.set(sx*0.155, 0.04, 0.35);
+    const w = new THREE.Mesh(new THREE.SphereGeometry(0.07,14,12), white2);
+    w.scale.set(1,1,0.5); grp.add(w);
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.042,12,10), dark);
+    p.scale.set(1,1,0.55); p.position.z = 0.02; grp.add(p);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.013,8,8), new THREE.MeshBasicMaterial({ color:0xffffff }));
+    s.position.set(sx*0.014+0.01, 0.014, 0.04); grp.add(s);
+    head.add(grp); return grp;
+  }
+  parts.eyeL = eye(-1); parts.eyeR = eye(1);
+
+  // 鼻
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055,12,10), dark);
+  nose.scale.set(1.5,1.0,0.9); nose.position.set(0,-0.05,0.39); head.add(nose);
+
+  // 口
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.045,12,10), new THREE.MeshStandardMaterial({ color:0x7a3a45, roughness:0.6 }));
+  mouth.scale.set(1.3,0.5,0.6); mouth.position.set(0,-0.15,0.37); head.add(mouth); parts.mouth = mouth;
+
+  // ほっぺ(ピンク)
+  function cheek(sx){
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.075,12,10), pink.clone());
+    m.scale.set(1,0.72,0.35); m.position.set(sx*0.27,-0.07,0.3); head.add(m); return m;
+  }
+  parts.cheekL = cheek(-1); parts.cheekR = cheek(1);
+
+  // 荷物を持つ位置(顔にかぶらないよう胸のひくい位置・腕のあいだ)
+  const holdPoint = new THREE.Group();
+  holdPoint.position.set(0, 0.42, 0.4);
+  model.add(holdPoint);
+
+  // かげ
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.42, 20),
+    new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.22 })
+  );
+  shadow.rotation.x = -Math.PI/2;
+  shadow.position.y = 0.02;
+  g.add(shadow);
+
+  g.userData.holdPoint = holdPoint;
+  g.userData.model = model;
+  g.userData.parts = parts;
+  return g;
+}
+
+const pandaGroup = buildPanda();
+scene.add(pandaGroup);
+let pandaMoveBob = 0; // 移動中の軽いアニメ用タイマー
+
+/* ============================================================
+   荷物(クレート)
+============================================================ */
+function buildCrate(){
+  const g = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color:0xb98a4f, roughness:0.9 });
+  const band = new THREE.MeshStandardMaterial({ color:0x8a5a2c, roughness:0.9 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.5,0.55), wood);
+  box.position.y = 0.27;
+  g.add(box);
+  const bandGeo = new THREE.BoxGeometry(0.58,0.08,0.58);
+  const b1 = new THREE.Mesh(bandGeo, band); b1.position.y = 0.16; g.add(b1);
+  const b2 = new THREE.Mesh(bandGeo, band); b2.position.y = 0.38; g.add(b2);
+  return g;
+}
+
+/* ============================================================
+   状態
+============================================================ */
+const state = {
+  mode: null,
+  player: { col: ENTRANCE.col, row: ENTRANCE.row },
+  facingAngle: Math.PI/2, // 見た目むき(演出用)。西(たなの方)を向いてスタート
+  targetCell: null,
+  item: null,        // { mesh, col, row, held }
+  score: 0,
+  total: 0,
+  camMode: "follow",  // "follow" | "overview"
+  answerCol: null,
+  busy: false,
+};
+
+function angleForDir(dc, dr){
+  if (dr === 1) return 0;
+  if (dc === 1) return -Math.PI/2;
+  if (dr === -1) return Math.PI;
+  if (dc === -1) return Math.PI/2;
+  return null;
+}
+function setFacingTarget(dc, dr){
+  const desired = angleForDir(dc, dr);
+  if (desired === null) return;
+  const cur = state.facingAngle % (Math.PI*2);
+  let delta = desired - cur;
+  delta = ((delta + Math.PI) % (Math.PI*2) + Math.PI*2) % (Math.PI*2) - Math.PI;
+  state.facingAngle += delta;
+}
+
+function setPlayerVisual(instant){
+  const w = worldOf(state.player);
+  pandaGroup.position.x = w.x;
+  pandaGroup.position.z = w.z;
+  if (instant){
+    pandaGroup.rotation.y = state.facingAngle;
+  }
+}
+
+function spawnItem(col, row, opts){
+  if (state.item && state.item.mesh.parent){
+    state.item.mesh.parent.remove(state.item.mesh);
+  }
+  const mesh = buildCrate();
+  const pos = worldOf({ col, row });
+  mesh.position.set(pos.x, 0, pos.z);
+  scene.add(mesh);
+  state.item = { mesh, col, row, held:false };
+}
+
+function randomCellExcept(exclude){
+  let c, r;
+  do {
+    c = Math.floor(Math.random()*COLS);
+    r = Math.floor(Math.random()*ROWS);
+  } while (exclude && exclude.col === c && exclude.row === r);
+  return { col:c, row:r };
+}
+
+/* ============================================================
+   UI要素取得
+============================================================ */
+const titleScreen = document.getElementById("titleScreen");
+const hud = document.getElementById("hud");
+const controls = document.getElementById("controls");
+const backBtn = document.getElementById("backBtn");
+const instructionText = document.getElementById("instructionText");
+const scoreBox = document.getElementById("scoreBox");
+const btnGrab = document.getElementById("btnGrab");
+const btnRelease = document.getElementById("btnRelease");
+const answerPanel = document.getElementById("answerPanel");
+const colRow = document.getElementById("colRow");
+const rowRow = document.getElementById("rowRow");
+const answerHint = document.getElementById("answerHint");
+const feedback = document.getElementById("feedback");
+const feedbackText = document.getElementById("feedbackText");
+const hintEl = document.getElementById("hint");
+const camBtn = document.getElementById("camBtn");
+
+function showHint(msg){
+  hintEl.textContent = msg;
+  hintEl.classList.add("show");
+  clearTimeout(showHint._t);
+  showHint._t = setTimeout(()=> hintEl.classList.remove("show"), 1400);
+}
+
+function updateScoreBox(){
+  scoreBox.textContent = `せいかい ${state.score} / ${state.total}`;
+}
+
+function updateActionButtons(){
+  const atItem = state.item && !state.item.held &&
+    state.item.col === state.player.col && state.item.row === state.player.row;
+  btnGrab.disabled = !(atItem);
+  btnRelease.disabled = !(state.item && state.item.held);
+}
+
+/* ---------- 列/行 回答ボタン生成 ---------- */
+COL_LETTERS.forEach((letter)=>{
+  const b = document.createElement("button");
+  b.className = "ansBtn";
+  b.textContent = letter;
+  b.addEventListener("click", ()=> onAnswerCol(letter));
+  colRow.appendChild(b);
+});
+for (let r=1;r<=ROWS;r++){
+  const b = document.createElement("button");
+  b.className = "ansBtn";
+  b.textContent = String(r);
+  b.addEventListener("click", ()=> onAnswerRow(r));
+  rowRow.appendChild(b);
+}
+
+function resetAnswerPanel(){
+  state.answerCol = null;
+  [...colRow.children].forEach(b=>b.classList.remove("selected"));
+  [...rowRow.children].forEach(b=>b.classList.remove("selected"));
+  rowRow.style.display = "none";
+  answerHint.textContent = "なんれつめ かな?(A〜E)";
+}
+
+function onAnswerCol(letter){
+  if (state.busy) return;
+  state.answerCol = letter;
+  [...colRow.children].forEach(b=> b.classList.toggle("selected", b.textContent===letter));
+  rowRow.style.display = "flex";
+  answerHint.textContent = "なんぎょうめ かな?(1〜5)";
+}
+
+function onAnswerRow(num){
+  if (state.busy || state.answerCol === null) return;
+  state.busy = true;
+  [...rowRow.children].forEach(b=> b.classList.toggle("selected", b.textContent===String(num)));
+  const col = COL_LETTERS.indexOf(state.answerCol);
+  const row = num - 1;
+  const correct = state.item && state.item.col === col && state.item.row === row;
+  state.total++;
+  if (correct) state.score++;
+  updateScoreBox();
+  showFeedback(correct, coordLabel(state.item.col, state.item.row));
+  setTimeout(()=>{
+    resetAnswerPanel();
+    startLocateRound();
+    state.busy = false;
+  }, 1500);
+}
+
+function showFeedback(ok, answerLabel){
+  feedback.className = ok ? "ok" : "ng";
+  feedback.style.display = "flex";
+  feedbackText.innerHTML = ok
+    ? "◯ せいかい!"
+    : `✕ ざんねん<span class="sub">こたえは ${answerLabel} だったよ</span>`;
+  setTimeout(()=>{ feedback.style.display = "none"; }, 1300);
+}
+
+/* ============================================================
+   モード進行
+============================================================ */
+function startMode(mode){
+  state.mode = mode;
+  state.score = 0; state.total = 0;
+  updateScoreBox();
+  answerPanel.style.display = "none";
+  controls.style.display = mode === "locate" ? "none" : "flex";
+  if (mode === "locate") answerPanel.style.display = "flex";
+  startRound(mode);
+}
+
+function startRound(mode){
+  state.player = { col: ENTRANCE.col, row: ENTRANCE.row };
+  state.facingAngle = Math.PI/2;
+  setPlayerVisual(true);
+
+  if (mode === "pick"){
+    state.targetCell = randomCellExcept(null);
+    spawnItem(state.targetCell.col, state.targetCell.row);
+    instructionText.textContent = `${coordLabel(state.targetCell.col, state.targetCell.row)} の にもつを とってきて`;
+  } else if (mode === "place"){
+    state.targetCell = randomCellExcept(null);
+    spawnItem(ENTRANCE.col, ENTRANCE.row);
+    instructionText.textContent = `この にもつを ${coordLabel(state.targetCell.col, state.targetCell.row)} に おいてきて`;
+  } else if (mode === "locate"){
+    instructionText.textContent = "にもつが ある たなを さがして こたえよう";
+    resetAnswerPanel();
+    startLocateRound();
+  }
+  updateActionButtons();
+}
+
+function startLocateRound(){
+  const cell = randomCellExcept(null);
+  spawnItem(cell.col, cell.row);
+  resetAnswerPanel();
+}
+
+function onGrab(){
+  if (btnGrab.disabled) return;
+  state.item.held = true;
+  const hp = pandaGroup.userData.holdPoint;
+  hp.add(state.item.mesh);
+  state.item.mesh.position.set(0, -0.15, 0);
+  playSound("grab");
+  updateActionButtons();
+}
+
+function onRelease(){
+  if (btnRelease.disabled) return;
+  state.item.held = false;
+  const w = worldOf(state.player);
+  scene.attach(state.item.mesh);
+  state.item.mesh.position.set(w.x, 0, w.z);
+  state.item.col = state.player.col;
+  state.item.row = state.player.row;
+  playSound("drop");
+  updateActionButtons();
+
+  if (state.mode === "pick"){
+    const success = state.player.col === ENTRANCE.col && state.player.row === ENTRANCE.row;
+    if (success){
+      state.total++; state.score++;
+      updateScoreBox();
+      showFeedback(true, "");
+      setTimeout(()=> startRound("pick"), 1400);
+    } else {
+      showHint("にゅうこう(スタート地点)まで はこんでね");
+    }
+  } else if (state.mode === "place"){
+    const success = state.player.col === state.targetCell.col && state.player.row === state.targetCell.row;
+    if (success){
+      state.total++; state.score++;
+      updateScoreBox();
+      showFeedback(true, "");
+      setTimeout(()=> startRound("place"), 1400);
+    } else {
+      showHint(`${coordLabel(state.targetCell.col, state.targetCell.row)} に おいてね`);
+    }
+  }
+}
+
+/* ============================================================
+   移動入力(絶対方向:上を押したら奥へ、左を押したら左へ、という素直な移動)
+============================================================ */
+function tryMoveDir(dc, dr){
+  const nc = state.player.col + dc;
+  const nr = state.player.row + dr;
+  if (isValidPos(nc, nr)){
+    state.player = { col:nc, row:nr };
+    setFacingTarget(dc, dr);
+    pandaMoveBob = 0.28;
+    updateActionButtons();
+    playSound("step");
+  } else {
+    showHint("そのさきには すすめないよ");
+  }
+}
+
+function bindHold(el, fn){
+  el.addEventListener("touchstart", (e)=>{ e.preventDefault(); fn(); }, { passive:false });
+  el.addEventListener("click", (e)=>{ fn(); });
+}
+bindHold(document.getElementById("btnUp"), ()=> tryMoveDir(0, 1));
+bindHold(document.getElementById("btnDown"), ()=> tryMoveDir(0, -1));
+bindHold(document.getElementById("btnLeft"), ()=> tryMoveDir(-1, 0));
+bindHold(document.getElementById("btnRight"), ()=> tryMoveDir(1, 0));
+bindHold(btnGrab, onGrab);
+bindHold(btnRelease, onRelease);
+
+/* ============================================================
+   カメラ切り替え
+============================================================ */
+function updateCamBtnLabel(){
+  camBtn.textContent = state.camMode === "follow" ? "ぜんたいを みる" : "パンダを おう";
+}
+camBtn.addEventListener("click", ()=>{
+  state.camMode = state.camMode === "follow" ? "overview" : "follow";
+  updateCamBtnLabel();
+});
+updateCamBtnLabel();
+
+const OVERVIEW_HEIGHT = 13;
+const FOLLOW_OFFSET = new THREE.Vector3(0, 7.5, 6.8); // 真後ろの上空(X成分なし)から見おろす。たての線・よこの線が斜めにならない
+function updateCamera(dt){
+  if (state.camMode === "overview"){
+    camera.up.set(0,0,-1);
+    const targetPos = new THREE.Vector3(0, OVERVIEW_HEIGHT, 0.4);
+    camera.position.lerp(targetPos, Math.min(1, dt*6));
+    const lookTarget = new THREE.Vector3(0,0,0.4);
+    camera.lookAt(lookTarget);
+  } else {
+    camera.up.set(0,1,0);
+    const desired = pandaGroup.position.clone().add(FOLLOW_OFFSET);
+    camera.position.lerp(desired, Math.min(1, dt*5));
+    const lookAt = pandaGroup.position.clone().add(new THREE.Vector3(0,0.7,0));
+    camera.lookAt(lookAt);
+  }
+}
+
+/* ============================================================
+   サウンド(Web Audio API・簡易合成音)
+============================================================ */
+let actx = null;
+function ensureAudio(){
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === "suspended") actx.resume();
+}
+function playSound(kind){
+  if (!actx) return;
+  const now = actx.currentTime;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.connect(gain); gain.connect(actx.destination);
+  let freq = 440, dur = 0.12, type = "sine";
+  if (kind === "step"){ freq = 220; dur = 0.06; type = "square"; }
+  else if (kind === "turn"){ freq = 280; dur = 0.06; type = "triangle"; }
+  else if (kind === "grab"){ freq = 520; dur = 0.14; type = "sine"; }
+  else if (kind === "drop"){ freq = 340; dur = 0.14; type = "sine"; }
+  else if (kind === "ok"){ freq = 660; dur = 0.28; type = "sine"; }
+  else if (kind === "ng"){ freq = 160; dur = 0.28; type = "sawtooth"; }
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.22, now+0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+  osc.start(now); osc.stop(now+dur+0.02);
+}
+
+/* ============================================================
+   タイトル画面 / モード開始
+============================================================ */
+document.querySelectorAll(".modeBtn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    ensureAudio();
+    titleScreen.style.display = "none";
+    hud.style.display = "flex";
+    controls.style.display = btn.dataset.mode === "locate" ? "none" : "flex";
+    backBtn.style.display = "flex";
+    startMode(btn.dataset.mode);
+  });
+});
+backBtn.addEventListener("click", ()=>{
+  titleScreen.style.display = "flex";
+  hud.style.display = "none";
+  controls.style.display = "none";
+  answerPanel.style.display = "none";
+  backBtn.style.display = "none";
+  state.mode = null;
+  if (state.item && state.item.mesh.parent) state.item.mesh.parent.remove(state.item.mesh);
+});
+
+/* ============================================================
+   メインループ
+============================================================ */
+const clock = new THREE.Clock();
+setPlayerVisual(true);
+camera.position.set(0, 6, 8);
+
+function animate(){
+  requestAnimationFrame(animate);
+  let dt = clock.getDelta();
+  dt = Math.min(dt, 1/30);
+
+  // パンダの見た目を目標位置・むきへ滑らかに追従
+  const w = worldOf(state.player);
+  const lerpF = Math.min(1, dt*10);
+  pandaGroup.position.x += (w.x - pandaGroup.position.x) * lerpF;
+  pandaGroup.position.z += (w.z - pandaGroup.position.z) * lerpF;
+  pandaGroup.rotation.y += (state.facingAngle - pandaGroup.rotation.y) * Math.min(1, dt*10);
+
+  // うごいたときの小さなホップ演出＋耳ぴくぴくのアイドルアニメ
+  const parts = pandaGroup.userData.parts;
+  const model = pandaGroup.userData.model;
+  const ARM_REST = -0.55;
+  if (pandaMoveBob > 0){
+    pandaMoveBob = Math.max(0, pandaMoveBob - dt);
+    const prog = 1 - pandaMoveBob/0.28;
+    const hop = Math.sin(Math.min(1,prog) * Math.PI) * 0.14;
+    model.position.y = hop;
+    const sw = Math.sin(prog*Math.PI);
+    parts.legL.rotation.x = sw*0.5; parts.legR.rotation.x = -sw*0.5;
+    parts.armL.rotation.x = ARM_REST - sw*0.25; parts.armR.rotation.x = ARM_REST + sw*0.25;
+  } else {
+    const idle = Math.sin(performance.now()/900) * 0.02;
+    model.position.y = idle;
+    parts.legL.rotation.x += (0 - parts.legL.rotation.x) * 0.1;
+    parts.legR.rotation.x += (0 - parts.legR.rotation.x) * 0.1;
+    parts.armL.rotation.x += (ARM_REST - parts.armL.rotation.x) * 0.1;
+    parts.armR.rotation.x += (ARM_REST - parts.armR.rotation.x) * 0.1;
+  }
+  const twitch = (Math.sin(performance.now()/1300) > 0.96) ? 0.22 : 0;
+  parts.earL.rotation.x += (twitch - parts.earL.rotation.x) * 0.2;
+  parts.earR.rotation.x += (twitch - parts.earR.rotation.x) * 0.2;
+
+  updateCamera(dt);
+  renderer.render(scene, camera);
+}
+animate();
+
+/* テスト用フック */
+window.__game = {
+  state,
+  coordLabel,
+  startMode,
+  tryMoveDir,
+  onGrab,
+  onRelease,
+};
+</script>
+</body>
+</html>

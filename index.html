@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <title>パンダのたなしごと</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
@@ -135,7 +138,7 @@
 
   /* ---------- モード3 回答パネル ---------- */
   #answerPanel{
-    position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:25;
+    position:fixed; right:14px; top:66%; transform:translateY(-50%); z-index:25;
     display:none; flex-direction:column; align-items:flex-end; gap:10px;
     padding:16px; max-width:320px;
     background:rgba(30,40,32,0.68); border-radius:22px;
@@ -151,6 +154,35 @@
   .ansBtn:active{transform:translateY(3px); box-shadow:0 1px 0 #cdbfa8;}
   .ansBtn.selected{background:var(--accent); color:#fff; box-shadow:0 4px 0 var(--accent-dark);}
 
+  /* ---------- せまい画面(iPhoneなど)向け調整 ---------- */
+  @media (max-width: 480px){
+    #instructionBox{ max-width:58vw; padding:8px 14px; }
+    #hudLeft{ gap:6px; }
+    .roundBtn{ width:44px; height:44px; font-size:18px; }
+    .pillBtn{ padding:7px 12px; font-size:11px; }
+    #scoreBox{ padding:5px 10px; font-size:12px; }
+    #dpad{
+      grid-template-columns:54px 54px 54px; grid-template-rows:54px 54px 54px; gap:5px;
+    }
+    #dpad button{ font-size:22px; border-radius:14px; }
+    .actionBtn{ width:82px; height:54px; font-size:14px; border-radius:15px; }
+    #actionPad{ gap:8px; }
+    #controls{ padding:0 10px max(10px,env(safe-area-inset-bottom)) 10px; }
+    #answerPanel{ right:8px; max-width:76vw; padding:12px; gap:8px; }
+    .ansBtn{ min-width:38px; height:40px; padding:0 4px; font-size:15px; border-radius:11px; }
+    #titleScreen h1{ font-size:26px; }
+    .modeBtn{ padding:12px 16px; gap:12px; }
+    .modeBtn .emoji{ font-size:28px; }
+  }
+  @media (max-width: 480px) and (max-height: 420px){
+    /* iPhoneの横向き(高さが低い)ときはさらに詰める */
+    #dpad{
+      grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px; gap:4px;
+    }
+    .actionBtn{ width:72px; height:44px; }
+    #answerPanel{ top:58%; max-width:60vw; }
+  }
+
   /* ---------- フィードバック ---------- */
   #feedback{
     position:fixed; inset:0; z-index:60; display:none;
@@ -164,6 +196,32 @@
   #feedback .sub{display:block; font-size:0.35em; color:#7a6a58; margin-top:6px; font-weight:400;}
   #feedback.ok .card{color:var(--ok);}
   #feedback.ng .card{color:var(--ng);}
+
+  #locateComplete{
+    position:fixed; inset:0; z-index:65; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(20,30,20,0.45);
+  }
+  #locateComplete .card{
+    background:var(--panel); border-radius:28px; padding:32px 40px;
+    text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
+  #locateCompleteText{
+    font-size:clamp(22px,5vw,32px); font-weight:700; color:var(--ink); margin-bottom:20px;
+  }
+  #locateCompleteText .sub{display:block; font-size:0.6em; color:#7a6a58; margin-top:8px; font-weight:400;}
+  #locateAgainBtn{
+    font-family:inherit; font-size:clamp(16px,3vw,20px); font-weight:700; color:#fff;
+    background:var(--accent); border:none; border-radius:999px; padding:12px 30px;
+    box-shadow:0 5px 0 var(--accent-dark);
+  }
+  #locateAgainBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--accent-dark);}
+  #locateTitleBtn{
+    font-family:inherit; font-size:clamp(16px,3vw,20px); font-weight:700; color:var(--ink);
+    background:#e8e2d4; border:none; border-radius:999px; padding:12px 30px;
+    box-shadow:0 5px 0 #cdbfa8;
+  }
+  #locateTitleBtn:active{transform:translateY(3px); box-shadow:0 1px 0 #cdbfa8;}
 
   #hint{
     position:fixed; left:50%; bottom:150px; transform:translateX(-50%);
@@ -231,6 +289,16 @@
   </div>
 
   <div id="feedback"><div class="card" id="feedbackText"></div></div>
+
+  <div id="locateComplete">
+    <div class="card">
+      <div id="locateCompleteText"></div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button id="locateAgainBtn">もういちど</button>
+        <button id="locateTitleBtn">タイトルへ</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="importmap">
@@ -409,16 +477,16 @@ function makeLabelSprite(text, bg){
 }
 
 for (let c=0; c<COLS; c++){
-  const base = cellCenter(c, 0);
-  const spr = makeLabelSprite(COL_LETTERS[c]);
-  spr.position.set(base.x, 0.55, base.z + CELL*0.5 + 0.55);
-  scene.add(spr);
+  const baseS = cellCenter(c, 0);
+  const sprBottom = makeLabelSprite(COL_LETTERS[c]);
+  sprBottom.position.set(baseS.x, 0.55, baseS.z + CELL*0.5 + 0.55);
+  scene.add(sprBottom);
 }
 for (let r=0; r<ROWS; r++){
-  const base = cellCenter(0, r);
-  const spr = makeLabelSprite(String(r+1));
-  spr.position.set(base.x - CELL*0.5 - 0.55, 0.55, base.z);
-  scene.add(spr);
+  const baseW = cellCenter(0, r);
+  const sprLeft = makeLabelSprite(String(r+1));
+  sprLeft.position.set(baseW.x - CELL*0.5 - 0.55, 0.55, baseW.z);
+  scene.add(sprLeft);
 }
 
 /* ============================================================
@@ -648,6 +716,11 @@ const feedback = document.getElementById("feedback");
 const feedbackText = document.getElementById("feedbackText");
 const hintEl = document.getElementById("hint");
 const camBtn = document.getElementById("camBtn");
+const locateComplete = document.getElementById("locateComplete");
+const locateCompleteText = document.getElementById("locateCompleteText");
+const locateAgainBtn = document.getElementById("locateAgainBtn");
+const locateTitleBtn = document.getElementById("locateTitleBtn");
+const LOCATE_ROUNDS = 5;
 
 function showHint(msg){
   hintEl.textContent = msg;
@@ -711,10 +784,20 @@ function onAnswerRow(num){
   updateScoreBox();
   showFeedback(correct, coordLabel(state.item.col, state.item.row));
   setTimeout(()=>{
-    resetAnswerPanel();
-    startLocateRound();
+    if (state.total >= LOCATE_ROUNDS){
+      showLocateComplete();
+    } else {
+      resetAnswerPanel();
+      startLocateRound();
+    }
     state.busy = false;
   }, 1500);
+}
+
+function showLocateComplete(){
+  answerPanel.style.display = "none";
+  locateCompleteText.innerHTML = `５もん おわり!<span class="sub">せいかい ${state.score} / ${LOCATE_ROUNDS}</span>`;
+  locateComplete.style.display = "flex";
 }
 
 function showFeedback(ok, answerLabel){
@@ -734,20 +817,19 @@ function startMode(mode){
   state.score = 0; state.total = 0;
   updateScoreBox();
   answerPanel.style.display = "none";
+  locateComplete.style.display = "none";
   controls.style.display = mode === "locate" ? "none" : "flex";
   if (mode === "locate") answerPanel.style.display = "flex";
 
-  // まず ぜんたい を見せてからはじまる
-  state.camMode = "overview";
+  // 最初だけパンダを前から見せて、そのあとは ぜんたい を見る視点がデフォルト
+  state.camMode = "intro";
   updateCamBtnLabel();
   startRound(mode);
   clearTimeout(startMode._camT);
-  if (mode !== "locate"){
-    startMode._camT = setTimeout(()=>{
-      state.camMode = "follow";
-      updateCamBtnLabel();
-    }, 1800);
-  }
+  startMode._camT = setTimeout(()=>{
+    state.camMode = "overview";
+    updateCamBtnLabel();
+  }, 1300);
 }
 
 function startRound(mode){
@@ -855,18 +937,29 @@ bindHold(btnRelease, onRelease);
    カメラ切り替え
 ============================================================ */
 function updateCamBtnLabel(){
-  camBtn.textContent = state.camMode === "follow" ? "ぜんたいを みる" : "パンダを おう";
+  camBtn.textContent = state.camMode === "overview" ? "パンダを おう" : "ぜんたいを みる";
 }
 camBtn.addEventListener("click", ()=>{
-  state.camMode = state.camMode === "follow" ? "overview" : "follow";
+  clearTimeout(startMode._camT);
+  state.camMode = state.camMode === "overview" ? "follow" : "overview";
   updateCamBtnLabel();
 });
 updateCamBtnLabel();
 
 const OVERVIEW_HEIGHT = 13;
 const FOLLOW_OFFSET = new THREE.Vector3(0, 7.5, 6.8); // 真後ろの上空(X成分なし)から見おろす。たての線・よこの線が斜めにならない
+const INTRO_OFFSET = new THREE.Vector3(0, 1.15, 2.6); // 最初にパンダを正面から見せるための位置(むきに応じて計算)
 function updateCamera(dt){
-  if (state.camMode === "overview"){
+  if (state.camMode === "intro"){
+    camera.up.set(0,1,0);
+    const forward = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), pandaGroup.rotation.y);
+    const desired = pandaGroup.position.clone()
+      .addScaledVector(forward, INTRO_OFFSET.z)
+      .add(new THREE.Vector3(0, INTRO_OFFSET.y, 0));
+    camera.position.lerp(desired, Math.min(1, dt*7));
+    const lookAt = pandaGroup.position.clone().add(new THREE.Vector3(0,1.0,0));
+    camera.lookAt(lookAt);
+  } else if (state.camMode === "overview"){
     camera.up.set(0,0,-1);
     const targetPos = new THREE.Vector3(0, OVERVIEW_HEIGHT, 0.4);
     camera.position.lerp(targetPos, Math.min(1, dt*6));
@@ -922,15 +1015,22 @@ document.querySelectorAll(".modeBtn").forEach(btn=>{
     startMode(btn.dataset.mode);
   });
 });
-backBtn.addEventListener("click", ()=>{
+function returnToTitle(){
   titleScreen.style.display = "flex";
   hud.style.display = "none";
   controls.style.display = "none";
   answerPanel.style.display = "none";
+  locateComplete.style.display = "none";
   backBtn.style.display = "none";
   state.mode = null;
   clearTimeout(startMode._camT);
   if (state.item && state.item.mesh.parent) state.item.mesh.parent.remove(state.item.mesh);
+}
+backBtn.addEventListener("click", returnToTitle);
+locateTitleBtn.addEventListener("click", returnToTitle);
+locateAgainBtn.addEventListener("click", ()=>{
+  locateComplete.style.display = "none";
+  startMode("locate");
 });
 
 /* ============================================================

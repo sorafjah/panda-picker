@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<title>パンダのたなしごと</title>
+<title>パンダの荷物はこび</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -34,8 +34,9 @@
   #titleScreen{
     position:fixed; inset:0; z-index:50;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:radial-gradient(ellipse at top, #bfe6c8 0%, #eaf2ea 70%);
+    background:#cfe8d2;
     gap:22px; padding:20px; text-align:center;
+    overflow-y:auto;
   }
   #titleScreen h1{
     font-size:clamp(28px,6vw,48px); color:#2f5a3d; margin:0 0 4px 0;
@@ -74,15 +75,14 @@
     font-size:clamp(14px,3vw,20px); font-weight:700; max-width:52vw;
     display:flex; flex-direction:column; gap:2px;
   }
-  #instructionBox .label{font-size:0.6em; font-weight:400; color:#8a7a66;}
   #topRightBtns{display:flex; flex-direction:column; gap:8px; pointer-events:auto; align-items:flex-end;}
-  .roundBtn{
-    background:var(--panel); border:none; border-radius:50%;
-    width:52px; height:52px; flex:0 0 auto; box-shadow:0 4px 8px rgba(0,0,0,0.25);
-    font-size:22px; display:flex; align-items:center; justify-content:center;
-    pointer-events:auto;
+  .plainIconBtn{
+    background:none; border:none;
+    width:52px; height:52px; flex:0 0 auto;
+    font-size:26px; display:flex; align-items:center; justify-content:center;
+    pointer-events:auto; padding:0;
   }
-  .roundBtn:active{transform:translateY(2px);}
+  .plainIconBtn:active{transform:translateY(2px);}
   .pillBtn{
     pointer-events:auto;
     background:var(--panel); border:none; border-radius:16px;
@@ -158,7 +158,7 @@
   @media (max-width: 480px){
     #instructionBox{ max-width:58vw; padding:8px 14px; }
     #hudLeft{ gap:6px; }
-    .roundBtn{ width:44px; height:44px; font-size:18px; }
+    .plainIconBtn{ width:44px; height:44px; font-size:20px; }
     .pillBtn{ padding:7px 12px; font-size:11px; }
     #scoreBox{ padding:5px 10px; font-size:12px; }
     #dpad{
@@ -237,7 +237,7 @@
   <canvas id="c"></canvas>
 
   <div id="titleScreen">
-    <h1>🐼 パンダのたなしごと</h1>
+    <h1>🐼 パンダの荷物はこび</h1>
     <p class="sub">たなの ばしょを よみとって、にもつを はこぼう</p>
     <button class="modeBtn" data-mode="pick">
       <span class="emoji">📦</span>
@@ -255,15 +255,14 @@
 
   <div id="hud" style="display:none;">
     <div id="hudLeft">
-      <button id="backBtn" class="roundBtn" style="display:none;">↩️</button>
       <div id="instructionBox">
-        <span class="label">しじ</span>
         <span id="instructionText">-</span>
       </div>
     </div>
     <div id="topRightBtns">
       <button id="camBtn" class="pillBtn">🔭 ぜんたいひょうじ</button>
       <div id="scoreBox">せいかい 0 / 0</div>
+      <button id="backBtn" class="plainIconBtn" style="display:none;">↩️</button>
     </div>
   </div>
 
@@ -278,7 +277,7 @@
     </div>
     <div id="actionPad">
       <button id="btnGrab" class="actionBtn" disabled>つかむ</button>
-      <button id="btnRelease" class="actionBtn" disabled>はなす</button>
+      <button id="btnRelease" class="actionBtn" disabled>おく</button>
     </div>
   </div>
 
@@ -370,10 +369,10 @@ function coordLabel(col, row){
 const canvas = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setClearColor(0xbfe0f0, 1);
+renderer.setClearColor(0xcfe8d2, 1);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xcdeaf5, 26, 52);
+scene.fog = new THREE.Fog(0xcfe8d2, 26, 52);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 
@@ -647,7 +646,7 @@ const state = {
   item: null,        // { mesh, col, row, held }
   score: 0,
   total: 0,
-  camMode: "follow",  // "follow" | "overview"
+  camMode: "follow",  // "follow"(添付画像のような固定俯瞰) | "overview"(真上)
   answerCol: null,
   busy: false,
 };
@@ -783,6 +782,7 @@ function onAnswerRow(num){
   if (correct) state.score++;
   updateScoreBox();
   showFeedback(correct, coordLabel(state.item.col, state.item.row));
+  playSound(correct ? "ok" : "ng");
   setTimeout(()=>{
     if (state.total >= LOCATE_ROUNDS){
       showLocateComplete();
@@ -821,15 +821,10 @@ function startMode(mode){
   controls.style.display = mode === "locate" ? "none" : "flex";
   if (mode === "locate") answerPanel.style.display = "flex";
 
-  // 最初だけパンダを前から見せて、そのあとは ぜんたい を見る視点がデフォルト
-  state.camMode = "intro";
+  // followは添付画像のような固定俯瞰なので、演出なしですぐにこの視点で始める
+  state.camMode = "follow";
   updateCamBtnLabel();
   startRound(mode);
-  clearTimeout(startMode._camT);
-  startMode._camT = setTimeout(()=>{
-    state.camMode = "overview";
-    updateCamBtnLabel();
-  }, 1300);
 }
 
 function startRound(mode){
@@ -888,6 +883,7 @@ function onRelease(){
       state.total++; state.score++;
       updateScoreBox();
       showFeedback(true, "");
+      playSound("ok");
       setTimeout(()=> startRound("pick"), 1400);
     } else {
       showHint("にゅうこう(スタート地点)まで はこんでね");
@@ -898,6 +894,7 @@ function onRelease(){
       state.total++; state.score++;
       updateScoreBox();
       showFeedback(true, "");
+      playSound("ok");
       setTimeout(()=> startRound("place"), 1400);
     } else {
       showHint(`${coordLabel(state.targetCell.col, state.targetCell.row)} に おいてね`);
@@ -935,42 +932,37 @@ bindHold(btnRelease, onRelease);
 
 /* ============================================================
    カメラ切り替え
+   follow: 添付画像のような、盤面全体が常に見える固定俯瞰(パンダを追わない)
+   overview: 真上から見おろす視点
 ============================================================ */
 function updateCamBtnLabel(){
-  camBtn.textContent = state.camMode === "overview" ? "パンダを おう" : "ぜんたいを みる";
+  camBtn.textContent = state.camMode === "overview" ? "ぜんたいを みる" : "まうえから みる";
 }
 camBtn.addEventListener("click", ()=>{
-  clearTimeout(startMode._camT);
   state.camMode = state.camMode === "overview" ? "follow" : "overview";
   updateCamBtnLabel();
 });
 updateCamBtnLabel();
 
 const OVERVIEW_HEIGHT = 13;
-const FOLLOW_OFFSET = new THREE.Vector3(0, 7.5, 6.8); // 真後ろの上空(X成分なし)から見おろす。たての線・よこの線が斜めにならない
-const INTRO_OFFSET = new THREE.Vector3(0, 1.15, 2.6); // 最初にパンダを正面から見せるための位置(むきに応じて計算)
+// 添付画像のような、盤面全体を斜め上から見おろす固定カメラ位置
+// A〜E列のラベル(盤面の手前側、下寄りに配置)まで画面に収まるよう、
+// カメラをやや高く・後ろに引き、注視点も手前寄りにしてある
+const FOLLOW_FIXED_POS = new THREE.Vector3(0, 10.5, 10.5);
+const FOLLOW_FIXED_LOOK = new THREE.Vector3(0, 0, 1.6);
+
 function updateCamera(dt){
-  if (state.camMode === "intro"){
-    camera.up.set(0,1,0);
-    const forward = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), pandaGroup.rotation.y);
-    const desired = pandaGroup.position.clone()
-      .addScaledVector(forward, INTRO_OFFSET.z)
-      .add(new THREE.Vector3(0, INTRO_OFFSET.y, 0));
-    camera.position.lerp(desired, Math.min(1, dt*7));
-    const lookAt = pandaGroup.position.clone().add(new THREE.Vector3(0,1.0,0));
-    camera.lookAt(lookAt);
-  } else if (state.camMode === "overview"){
+  if (state.camMode === "overview"){
     camera.up.set(0,0,-1);
     const targetPos = new THREE.Vector3(0, OVERVIEW_HEIGHT, 0.4);
     camera.position.lerp(targetPos, Math.min(1, dt*6));
     const lookTarget = new THREE.Vector3(0,0,0.4);
     camera.lookAt(lookTarget);
   } else {
+    // follow: パンダの位置に関わらずカメラは動かさない(添付画像の見え方を維持)
     camera.up.set(0,1,0);
-    const desired = pandaGroup.position.clone().add(FOLLOW_OFFSET);
-    camera.position.lerp(desired, Math.min(1, dt*5));
-    const lookAt = pandaGroup.position.clone().add(new THREE.Vector3(0,0.7,0));
-    camera.lookAt(lookAt);
+    camera.position.lerp(FOLLOW_FIXED_POS, Math.min(1, dt*6));
+    camera.lookAt(FOLLOW_FIXED_LOOK);
   }
 }
 
@@ -1023,7 +1015,6 @@ function returnToTitle(){
   locateComplete.style.display = "none";
   backBtn.style.display = "none";
   state.mode = null;
-  clearTimeout(startMode._camT);
   if (state.item && state.item.mesh.parent) state.item.mesh.parent.remove(state.item.mesh);
 }
 backBtn.addEventListener("click", returnToTitle);
@@ -1038,7 +1029,7 @@ locateAgainBtn.addEventListener("click", ()=>{
 ============================================================ */
 const clock = new THREE.Clock();
 setPlayerVisual(true);
-camera.position.set(0, 6, 8);
+camera.position.copy(FOLLOW_FIXED_POS);
 
 function animate(){
   requestAnimationFrame(animate);
